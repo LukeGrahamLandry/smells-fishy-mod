@@ -4,8 +4,10 @@ package ca.lukegrahamlandry.smellsfishy.event;
 import ca.lukegrahamlandry.smellsfishy.ModMain;
 import ca.lukegrahamlandry.smellsfishy.data.EntityRainEvent;
 import ca.lukegrahamlandry.smellsfishy.data.EntitySpawnOption;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.random.WeightedRandomList;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -15,28 +17,30 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDropsEvent;
 import net.minecraftforge.event.entity.living.LivingFallEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.checkerframework.checker.units.qual.C;
 
 import java.util.*;
 
 @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class RainHandler {
+public class RainHandler extends SavedData {
     private static final Random rand = new Random();
-    private static final Map<ResourceKey<Level>, EntityRainEvent> currentEvents = new HashMap<>();
-    private static final Map<ResourceKey<Level>, List<Entity>> existingRainEntities = new HashMap<>();
+    private EntityRainEvent currentEvent = null;
+    private List<Entity> existingRainEntities = new ArrayList<>();
+    private ResourceLocation currentEventKey = null;
 
     @SubscribeEvent
     public static void onTickPlayer(TickEvent.PlayerTickEvent event){
         if (event.player.level.isClientSide() || event.phase == TickEvent.Phase.END) return;
 
-        if (currentEvents.containsKey(event.player.level.dimension())){
-            EntityRainEvent rainEvent = currentEvents.get(event.player.level.dimension());
-            tickRain(event.player, rainEvent);
+        if (get(event.player.getLevel()).currentEvent != null){
+            tickRain(event.player, get(event.player.getLevel()).currentEvent);
         }
     }
 
@@ -61,8 +65,10 @@ public class RainHandler {
             int y = player.level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) + rainEvent.height;
             if (spawn instanceof LivingEntity) ((LivingEntity) spawn).addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 40, 0, false, false, false));
             spawn.setPos(x, y, z);
+            spawn.getPersistentData().putBoolean("entityrain", true);
             player.level.addFreshEntity(spawn);
-            existingRainEntities.get(player.level.dimension()).add(spawn);
+            get(player.level).existingRainEntities.add(spawn);
+            get(player.level).setDirty();
         }
     }
 
@@ -75,48 +81,49 @@ public class RainHandler {
 
     public static boolean startRain(Level level, ResourceLocation rainType){
         stopRain(level);
-        ResourceKey<Level> dimension = level.dimension();
         EntityRainEvent rain = ModMain.ENTITY_RAIN_LOADER.events.get(rainType);
         if (rain != null) {
-            currentEvents.put(dimension, rain);
-            existingRainEntities.put(level.dimension(), new ArrayList<>());
+            get(level).currentEvent = rain;
+            get(level).currentEventKey = rainType;
+            get(level).setDirty();
         }
 
         return rain != null;
     }
 
     public static void stopRain(Level level) {
-        currentEvents.remove(level.dimension());
+        get(level).currentEvent = null;
+        get(level).currentEventKey = null;
 
-        if (existingRainEntities.containsKey(level.dimension())){
-            for (Entity e : existingRainEntities.get(level.dimension())){
-                e.discard();
-            }
-            existingRainEntities.remove(level.dimension());
+        for (Entity e : get(level).existingRainEntities){
+            e.discard();
         }
+        get(level).existingRainEntities.clear();
+        get(level).setDirty();
     }
 
-    private static Map<ResourceKey<Level>, Boolean> wasRaining = new HashMap<>();
-    private static Map<ResourceKey<Level>, Boolean> wasDay = new HashMap<>();
+    private boolean wasRaining = false;
+    private boolean wasDay = false;
     private static void tryStartRainEvents(Level world) {
         boolean alreadyChecked = false;
-        if (world.isRaining() && !wasRaining.getOrDefault(world.dimension(), false)) {
-            wasRaining.put(world.dimension(), true);
+        RainHandler data = get(world);
+        if (world.isRaining() && !data.wasRaining) {
+            data.wasRaining = true;
             checkRainEvent(world);
             alreadyChecked = true;
         }
-        if (!world.isRaining() && wasRaining.getOrDefault(world.dimension(), false)) {
-            wasRaining.put(world.dimension(), false);
+        if (!world.isRaining() && data.wasRaining) {
+            data.wasRaining = false;
             if (!alreadyChecked) checkRainEvent(world);
             alreadyChecked = true;
         }
-        if (world.isDay() && !wasDay.getOrDefault(world.dimension(), false)) {
-            wasDay.put(world.dimension(), true);
+        if (world.isDay() && !data.wasDay) {
+            data.wasDay = true;
             if (!alreadyChecked) checkRainEvent(world);
             alreadyChecked = true;
         }
-        if (!world.isDay() && wasDay.getOrDefault(world.dimension(), false)) {
-            wasDay.put(world.dimension(), false);
+        if (!world.isDay() && data.wasDay) {
+            data.wasDay = false;
             if (!alreadyChecked) checkRainEvent(world);
         }
     }
@@ -124,7 +131,7 @@ public class RainHandler {
 
     private static void checkRainEvent(Level world) {
         for (ResourceLocation rainType : ModMain.ENTITY_RAIN_LOADER.events.keySet()){
-            if (currentEvents.containsKey(world.dimension())) stopRain(world);
+            if (get(world).currentEvent != null) stopRain(world);
             EntityRainEvent rainData = ModMain.ENTITY_RAIN_LOADER.events.get(rainType);
 
             if (!rainData.when.dimensions.contains(world.dimension().location().toString())) continue;
@@ -145,8 +152,8 @@ public class RainHandler {
     public static void onFall(LivingFallEvent event){
         if (event.getEntityLiving().level.isClientSide()) return;
 
-        if (existingRainEntities.containsKey(event.getEntityLiving().level.dimension())){
-            if (existingRainEntities.get(event.getEntityLiving().level.dimension()).contains(event.getEntityLiving())){
+        if (get(event.getEntityLiving().level).currentEvent != null){
+            if (get(event.getEntityLiving().level).existingRainEntities.contains(event.getEntityLiving())){
                 event.setDamageMultiplier(0);
             }
         }
@@ -157,10 +164,48 @@ public class RainHandler {
     public static void onLoot(LivingDropsEvent event){
         if (event.getEntityLiving().level.isClientSide()) return;
 
-        if (existingRainEntities.containsKey(event.getEntityLiving().level.dimension())){
-            if (existingRainEntities.get(event.getEntityLiving().level.dimension()).contains(event.getEntityLiving())){
-                if (!event.isRecentlyHit()) event.setCanceled(true);
-            }
+        if (event.getEntityLiving().getPersistentData().contains("entityrain")){
+            if (!event.isRecentlyHit()) event.setCanceled(true);
         }
+    }
+
+    public static RainHandler get(Level level){
+        return ((ServerLevel) level).getDataStorage().computeIfAbsent(tag -> RainHandler.load(tag, level), RainHandler::new, ModMain.MOD_ID + ":rain_event_tracker");
+    }
+
+    @Override
+    public CompoundTag save(CompoundTag tag) {
+        tag.putBoolean("wasDay", wasDay);
+        tag.putBoolean("wasRaining", wasRaining);
+        if (currentEventKey != null) tag.putString("event", currentEventKey.toString());
+
+        CompoundTag entities = new CompoundTag();
+        int i = 0;
+        for (Entity e : existingRainEntities){
+            if (!e.isAlive()) continue;
+            entities.putUUID(String.valueOf(i), e.getUUID());
+            i++;
+        }
+        tag.put("entities", entities);
+
+        return tag;
+    }
+
+    private static RainHandler load(CompoundTag tag, Level level) {
+        RainHandler self = new RainHandler();
+        self.wasDay = tag.getBoolean("wasDay");
+        self.wasRaining = tag.getBoolean("wasRaining");
+        self.currentEventKey = tag.contains("event") ? new ResourceLocation(tag.getString("event")) : null;
+        self.currentEvent = tag.contains("event") ? ModMain.ENTITY_RAIN_LOADER.events.getOrDefault(self.currentEventKey, null) : null;
+
+        int i = 0;
+        CompoundTag entities = tag.getCompound("entities");
+        while (entities.contains(String.valueOf(i))){
+            Entity e = ((ServerLevel)level).getEntity(entities.getUUID(String.valueOf(i)));
+            if (e != null) self.existingRainEntities.add(e);
+            i++;
+        }
+
+        return self;
     }
 }

@@ -6,27 +6,27 @@
     "day": true,
     "dimensions": ["minecraft:overworld"]
   },
-  "chance": 2,
+  "chance": 10,
   "spawnRate": 10,
   "radius": 5,
   "height": 10,
-  "replace": true,
+  "replace": false,
   "spawn": [
     {
       "entity": "minecraft:cod",
-      "weight": 10
+      "weight": 20
     },
     {
       "entity": "minecraft:salmon",
-      "weight": 5
+      "weight": 10
     },
     {
       "entity": "minecraft:dolphin",
-      "weight": 1
+      "weight": 2
     },
     {
       "entity": "minecraft:pufferfish",
-      "weight": 5
+      "weight": 1
     }
   ]
 }
