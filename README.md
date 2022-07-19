@@ -3,6 +3,8 @@
 - forge 1.18.2
 - commissioned by coda
 
+Cause brief entity rain events where different creatures fall from the sky. The default data pack adds a fish rain event. 
+
 ## Data Packs
 
 New entity rain events are defined by json files in the `entityrain` folder of data packs. 
@@ -13,7 +15,7 @@ The format of these files is as follows,
 - `spawnRate` (int): an entity will spawn near each player every x ticks (on average) while the event is active
 - `spawn` (list of EntitySpawnOption): the types of entities that will spawn during this event
 - `when` (EventConditions): what situations this event should start under
-- `chance` (int): how likely the event is to start. the chance each day/night is (1/chance)
+- `chance` (int): how likely the event is to start. the chance for the event to start each check is (1/chance). the check is made for each possible event whenever it switches between day/night or raining/clear. the event will last until the next check. 
 - `replace` (boolean): what happens if another data pack has already defined an event of this name. if true, the existing event will be deleted and this file will be used instead. if false, the contents of `spawn` and `dimensions` will be added to the existing event. the defaults to true.
 
 You can see the default fish rain json data [on github](https://github.com/LukeGrahamLandryMC/smells-fishy-mod/blob/main/src/main/resources/data/smellsfishy/entityrain/fish.json).

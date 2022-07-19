@@ -4,9 +4,9 @@
     "notRaining": false,
     "night": true,
     "day": true,
-    "valid_dimensions": ["minecraft:overworld"]
+    "dimensions": ["minecraft:overworld"]
   },
-  "chance": 50,
+  "chance": 2,
   "spawnRate": 10,
   "radius": 5,
   "height": 10,

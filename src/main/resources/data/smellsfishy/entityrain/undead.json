@@ -1,12 +1,12 @@
 {
   "when": {
     "raining": true,
-    "notRaining": false,
+    "notRaining": true,
     "night": true,
-    "day": true,
-    "valid_dimensions": ["minecraft:overworld"]
+    "day": false,
+    "dimensions": ["minecraft:overworld"]
   },
-  "chance": 50,
+  "chance": 5,
   "spawnRate": 10,
   "radius": 5,
   "height": 10,

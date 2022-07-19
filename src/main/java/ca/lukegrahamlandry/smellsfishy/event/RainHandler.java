@@ -4,7 +4,6 @@ package ca.lukegrahamlandry.smellsfishy.event;
 import ca.lukegrahamlandry.smellsfishy.ModMain;
 import ca.lukegrahamlandry.smellsfishy.data.EntityRainEvent;
 import ca.lukegrahamlandry.smellsfishy.data.EntitySpawnOption;
-import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.random.WeightedRandomList;
@@ -32,13 +31,19 @@ public class RainHandler {
     private static final Map<ResourceKey<Level>, List<Entity>> existingRainEntities = new HashMap<>();
 
     @SubscribeEvent
-    public static void onTick(TickEvent.PlayerTickEvent event){
+    public static void onTickPlayer(TickEvent.PlayerTickEvent event){
         if (event.player.level.isClientSide() || event.phase == TickEvent.Phase.END) return;
 
         if (currentEvents.containsKey(event.player.level.dimension())){
             EntityRainEvent rainEvent = currentEvents.get(event.player.level.dimension());
             tickRain(event.player, rainEvent);
         }
+    }
+
+    @SubscribeEvent
+    public static void onTickWorld(TickEvent.WorldTickEvent event){
+        if (event.world.isClientSide() || event.phase == TickEvent.Phase.END) return;
+        tryStartRainEvents(event.world);
     }
 
     private static void tickRain(Player player, EntityRainEvent rainEvent) {
@@ -91,6 +96,49 @@ public class RainHandler {
         }
     }
 
+    private static Map<ResourceKey<Level>, Boolean> wasRaining = new HashMap<>();
+    private static Map<ResourceKey<Level>, Boolean> wasDay = new HashMap<>();
+    private static void tryStartRainEvents(Level world) {
+        boolean alreadyChecked = false;
+        if (world.isRaining() && !wasRaining.getOrDefault(world.dimension(), false)) {
+            wasRaining.put(world.dimension(), true);
+            checkRainEvent(world);
+            alreadyChecked = true;
+        }
+        if (!world.isRaining() && wasRaining.getOrDefault(world.dimension(), false)) {
+            wasRaining.put(world.dimension(), false);
+            if (!alreadyChecked) checkRainEvent(world);
+            alreadyChecked = true;
+        }
+        if (world.isDay() && !wasDay.getOrDefault(world.dimension(), false)) {
+            wasDay.put(world.dimension(), true);
+            if (!alreadyChecked) checkRainEvent(world);
+            alreadyChecked = true;
+        }
+        if (!world.isDay() && wasDay.getOrDefault(world.dimension(), false)) {
+            wasDay.put(world.dimension(), false);
+            if (!alreadyChecked) checkRainEvent(world);
+        }
+    }
+
+
+    private static void checkRainEvent(Level world) {
+        for (ResourceLocation rainType : ModMain.ENTITY_RAIN_LOADER.events.keySet()){
+            if (currentEvents.containsKey(world.dimension())) stopRain(world);
+            EntityRainEvent rainData = ModMain.ENTITY_RAIN_LOADER.events.get(rainType);
+
+            if (!rainData.when.dimensions.contains(world.dimension().location().toString())) continue;
+            if (!rainData.when.day && world.isDay()) continue;
+            if (!rainData.when.night && !world.isDay()) continue;
+            if (!rainData.when.raining && world.isRaining()) continue;
+            if (!rainData.when.notRaining && !world.isRaining()) continue;
+
+            if (rand.nextInt(rainData.chance) == 0){
+                startRain(world, rainType);
+                return;
+            }
+        }
+    }
 
     // rain entities should not take fall damage
     @SubscribeEvent

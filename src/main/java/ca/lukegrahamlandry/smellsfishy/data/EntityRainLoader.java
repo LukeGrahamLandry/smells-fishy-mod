@@ -41,6 +41,11 @@ public class EntityRainLoader extends SimpleJsonResourceReloadListener {
                     return !exists;
                 });
 
+                if (stats.when.dimensions == null){
+                    ModMain.LOGGER.debug(name + " [when][dimensions] is null: skipping!");
+                    continue;
+                }
+
                 events.put(name, stats);
             } catch (JsonSyntaxException e){
                 e.printStackTrace();
