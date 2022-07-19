@@ -10,6 +10,7 @@
   "spawnRate": 10,
   "radius": 5,
   "height": 10,
+  "replace": true,
   "spawn": [
     {
       "entity": "minecraft:cod",
