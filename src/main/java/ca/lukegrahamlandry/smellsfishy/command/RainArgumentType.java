@@ -47,7 +47,7 @@ public class RainArgumentType extends ResourceLocationArgument {
     }
 
     private static Set<ResourceLocation> options(){
-        return null;
+        return ModMain.ENTITY_RAIN_LOADER.events.keySet();
     }
 
     public Collection<String> getExamples() {

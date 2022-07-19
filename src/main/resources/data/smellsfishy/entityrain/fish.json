@@ -1,0 +1,31 @@
+{
+  "when": {
+    "raining": true,
+    "notRaining": false,
+    "night": true,
+    "day": true,
+    "valid_dimensions": ["minecraft:overworld"]
+  },
+  "chance": 50,
+  "spawnRate": 10,
+  "radius": 5,
+  "height": 10,
+  "spawn": [
+    {
+      "entity": "minecraft:cod",
+      "weight": 10
+    },
+    {
+      "entity": "minecraft:salmon",
+      "weight": 5
+    },
+    {
+      "entity": "minecraft:dolphin",
+      "weight": 1
+    },
+    {
+      "entity": "minecraft:pufferfish",
+      "weight": 5
+    }
+  ]
+}

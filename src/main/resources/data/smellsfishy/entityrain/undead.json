@@ -1,0 +1,31 @@
+{
+  "when": {
+    "raining": true,
+    "notRaining": false,
+    "night": true,
+    "day": true,
+    "valid_dimensions": ["minecraft:overworld"]
+  },
+  "chance": 50,
+  "spawnRate": 10,
+  "radius": 5,
+  "height": 10,
+  "spawn": [
+    {
+      "entity": "minecraft:zombie",
+      "weight": 10
+    },
+    {
+      "entity": "minecraft:skeleton",
+      "weight": 5
+    },
+    {
+      "entity": "minecraft:husk",
+      "weight": 5
+    },
+    {
+      "entity": "minecraft:wither_skeleton",
+      "weight": 5
+    }
+  ]
+}
