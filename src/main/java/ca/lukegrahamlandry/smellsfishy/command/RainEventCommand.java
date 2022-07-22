@@ -18,7 +18,9 @@ public class RainEventCommand {
     }
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
-        return Commands.literal("entityrain").then(
+        return Commands.literal("entityrain").requires((ctx) -> {
+            return ctx.hasPermission(2);
+        }).then(
                 Commands.literal("start")
                         .requires(cs->cs.hasPermission(0)) //permission
                         .then(Commands.argument("event", new RainArgumentType())

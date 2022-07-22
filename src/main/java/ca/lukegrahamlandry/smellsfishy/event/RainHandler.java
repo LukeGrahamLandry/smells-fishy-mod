@@ -4,10 +4,16 @@ package ca.lukegrahamlandry.smellsfishy.event;
 import ca.lukegrahamlandry.smellsfishy.ModMain;
 import ca.lukegrahamlandry.smellsfishy.data.EntityRainEvent;
 import ca.lukegrahamlandry.smellsfishy.data.EntitySpawnOption;
+import ca.lukegrahamlandry.smellsfishy.data.IBiomeListHolder;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BiomeTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.random.WeightedRandomList;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -16,6 +22,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraftforge.event.TickEvent;
@@ -52,7 +59,16 @@ public class RainHandler extends SavedData {
 
     private static void tickRain(Player player, EntityRainEvent rainEvent) {
         if (rand.nextInt(rainEvent.spawnRate) == 0){
-            EntitySpawnOption toSpawn = pickRandom(rainEvent.spawn);
+            int x = (int) (player.blockPosition().getX() + rand.nextInt(rainEvent.radius * 2) - rainEvent.radius);
+            int z = (int) (player.blockPosition().getZ() + rand.nextInt(rainEvent.radius * 2) - rainEvent.radius);
+            int y = player.level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) + rainEvent.height;
+
+            Holder<Biome> currentBiome = player.level.getBiome(new BlockPos(x, y, z));
+            if (!filterBiome(rainEvent.when, currentBiome)) return;
+
+            List<EntitySpawnOption> possibleSpawns = new ArrayList<>(rainEvent.spawn);
+            possibleSpawns.removeIf((spawnData) -> !filterBiome(spawnData, currentBiome));
+            EntitySpawnOption toSpawn = pickRandom(possibleSpawns);
             if (toSpawn == null) return;
 
             ResourceLocation entityTypeKey = new ResourceLocation(toSpawn.entity);
@@ -60,9 +76,6 @@ public class RainHandler extends SavedData {
             if (entityType == null) return;
 
             Entity spawn = entityType.create(player.getLevel());
-            int x = (int) (player.blockPosition().getX() + rand.nextInt(rainEvent.radius * 2) - rainEvent.radius);
-            int z = (int) (player.blockPosition().getZ() + rand.nextInt(rainEvent.radius * 2) - rainEvent.radius);
-            int y = player.level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) + rainEvent.height;
             if (spawn instanceof LivingEntity) ((LivingEntity) spawn).addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 40, 0, false, false, false));
             spawn.setPos(x, y, z);
             spawn.getPersistentData().putBoolean("entityrain", true);
@@ -207,5 +220,28 @@ public class RainHandler extends SavedData {
         }
 
         return self;
+    }
+
+    private static boolean filterBiome(IBiomeListHolder spawnData, Holder<Biome> currentBiome) {
+        if (spawnData.getBiomes() == null) return true;
+
+        boolean matches = false;
+        for (String checkBiome : spawnData.getBiomes()){
+            if (checkBiome.startsWith("#")){
+                TagKey<Biome> tag = TagKey.create(Registry.BIOME_REGISTRY, new ResourceLocation(checkBiome.substring(1)));
+                if (currentBiome.is(tag)){
+                    matches = true;
+                    break;
+                }
+            } else {
+                if (currentBiome.is(new ResourceLocation(checkBiome))){
+                    matches = true;
+                    break;
+                }
+            }
+        }
+
+        if (matches) return !spawnData.isBlacklist();
+        else return spawnData.isBlacklist();
     }
 }

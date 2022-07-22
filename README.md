@@ -24,6 +24,8 @@ You can see the default fish rain json data [on github](https://github.com/LukeG
 
 - `entity` (string): the registry key of the entity type (ie. `minecraft:zombie`)
 - `weight` (int): how likely this entity is compared to the others. chance of each entry is (weight / totalWeight) 
+- `biomes` (list of string): resource locations of biomes to whitelist (allow this spawn in). **optional**, when not defined the spawn will occur in all biomes. Tags are supported, prefix with `#`
+- `biomesIsBlacklist` (boolean): when true, the `biomes` filter is inverted, the spawn will NOT occur in the listed biomes. **optional**, defaults to false
 
 > the data for currently active rain events does not change when the /reload command is used, you must wait for it to start again to see the effects
 
@@ -34,4 +36,14 @@ You can see the default fish rain json data [on github](https://github.com/LukeG
 - `day` (boolean): can the event start in the daytime
 - `night` (boolean): can the event start in the nighttime
 - `dimensions` (list of string): the registry keys of the dimensions the event may happen in (ie. `minecraft:overworld`)
+- `biomes` (list of string): resource locations of biomes to whitelist (allow rain to occur in). **optional**, when not defined the event will cause spawns in all biomes. Tags are supported, prefix with `#`
+- `biomesIsBlacklist` (boolean): when true, the `biomes` filter is inverted, the entities will NOT be spawned in the listed biomes. **optional**, defaults to false
 
+## Commands
+
+To test your data packs, you can force change the active entity rain event in your current dimension with the following commands (requires OP permissions).  
+
+```
+/entityrain start <key>
+/entityrain stop
+```

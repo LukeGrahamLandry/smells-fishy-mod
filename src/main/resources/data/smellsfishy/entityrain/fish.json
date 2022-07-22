@@ -10,14 +10,16 @@
   "spawnRate": 10,
   "radius": 5,
   "height": 10,
-  "replace": false,
   "spawn": [
     {
       "entity": "minecraft:cod",
-      "weight": 20
+      "weight": 20,
+      "biomes": ["minecraft:desert"],
+      "biomesIsBlacklist": true
     },
     {
       "entity": "minecraft:salmon",
+      "biomes": ["minecraft:plains"],
       "weight": 10
     },
     {
