@@ -5,49 +5,50 @@ import ca.lukegrahamlandry.smellsfishy.ModMain;
 import ca.lukegrahamlandry.smellsfishy.data.EntityRainEvent;
 import ca.lukegrahamlandry.smellsfishy.data.EntitySpawnOption;
 import ca.lukegrahamlandry.smellsfishy.data.IBiomeListHolder;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
-import net.minecraft.core.Registry;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BiomeTags;
-import net.minecraft.tags.TagKey;
-import net.minecraft.util.random.WeightedRandomList;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.saveddata.SavedData;
+import com.mojang.datafixers.util.Pair;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.potion.EffectInstance;
+import net.minecraft.potion.Effects;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.WeightedRandom;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
+import net.minecraft.world.biome.Biome;
+import net.minecraft.world.gen.Heightmap;
+import net.minecraft.world.server.ServerWorld;
+import net.minecraft.world.storage.WorldSavedData;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDropsEvent;
 import net.minecraftforge.event.entity.living.LivingFallEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.checkerframework.checker.units.qual.C;
 
 import java.util.*;
 
 @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class RainHandler extends SavedData {
+public class RainHandler extends WorldSavedData {
     private static final Random rand = new Random();
+    private final World levelForLoad;
     private EntityRainEvent currentEvent = null;
     private List<Entity> existingRainEntities = new ArrayList<>();
     private ResourceLocation currentEventKey = null;
+
+    public RainHandler(String p_i2141_1_, World level) {
+        super(p_i2141_1_);
+        this.levelForLoad = level;
+    }
 
     @SubscribeEvent
     public static void onTickPlayer(TickEvent.PlayerTickEvent event){
         if (event.player.level.isClientSide() || event.phase == TickEvent.Phase.END) return;
 
-        if (get(event.player.getLevel()).currentEvent != null){
-            tickRain(event.player, get(event.player.getLevel()).currentEvent);
+        if (get(event.player.level).currentEvent != null){
+            tickRain(event.player, get(event.player.level).currentEvent);
         }
     }
 
@@ -57,13 +58,13 @@ public class RainHandler extends SavedData {
         tryStartRainEvents(event.world);
     }
 
-    private static void tickRain(Player player, EntityRainEvent rainEvent) {
+    private static void tickRain(PlayerEntity player, EntityRainEvent rainEvent) {
         if (rand.nextInt(rainEvent.spawnRate) == 0){
             int x = (int) (player.blockPosition().getX() + rand.nextInt(rainEvent.radius * 2) - rainEvent.radius);
             int z = (int) (player.blockPosition().getZ() + rand.nextInt(rainEvent.radius * 2) - rainEvent.radius);
-            int y = player.level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) + rainEvent.height;
+            int y = player.level.getHeight(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z) + rainEvent.height;
 
-            Holder<Biome> currentBiome = player.level.getBiome(new BlockPos(x, y, z));
+            Biome currentBiome = player.level.getBiome(new BlockPos(x, y, z));
             if (!filterBiome(rainEvent.when, currentBiome)) return;
 
             List<EntitySpawnOption> possibleSpawns = new ArrayList<>(rainEvent.spawn);
@@ -75,8 +76,8 @@ public class RainHandler extends SavedData {
             EntityType<?> entityType = ForgeRegistries.ENTITIES.getValue(entityTypeKey);
             if (entityType == null) return;
 
-            Entity spawn = entityType.create(player.getLevel());
-            if (spawn instanceof LivingEntity) ((LivingEntity) spawn).addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 40, 0, false, false, false));
+            Entity spawn = entityType.create(player.level);
+            if (spawn instanceof LivingEntity) ((LivingEntity) spawn).addEffect(new EffectInstance(Effects.SLOW_FALLING, 40, 0, false, false, false));
             spawn.setPos(x, y, z);
             spawn.getPersistentData().putBoolean("entityrain", true);
             player.level.addFreshEntity(spawn);
@@ -86,13 +87,23 @@ public class RainHandler extends SavedData {
     }
 
     private static EntitySpawnOption pickRandom(List<EntitySpawnOption> spawn) {
-        WeightedRandomList<EntitySpawnOption> options = WeightedRandomList.create(spawn);
-        Optional<EntitySpawnOption> result = options.getRandom(rand);
-        return result.orElse(null);
+        List<Pair<Integer, EntitySpawnOption>> choices = new ArrayList<>();
+        int total = 0;
+        for (EntitySpawnOption option : spawn){
+            total += option.weight;
+            choices.add(new Pair<>(total, option));
+        }
+
+        int value = rand.nextInt(total);
+        for (Pair<Integer, EntitySpawnOption> check : choices){
+            if (value < check.getFirst()) return check.getSecond();
+        }
+
+        return spawn.get(spawn.size() - 1);
     }
 
 
-    public static boolean startRain(Level level, ResourceLocation rainType){
+    public static boolean startRain(World level, ResourceLocation rainType){
         stopRain(level);
         EntityRainEvent rain = ModMain.ENTITY_RAIN_LOADER.events.get(rainType);
         if (rain != null) {
@@ -104,12 +115,12 @@ public class RainHandler extends SavedData {
         return rain != null;
     }
 
-    public static void stopRain(Level level) {
+    public static void stopRain(World level) {
         get(level).currentEvent = null;
         get(level).currentEventKey = null;
 
         for (Entity e : get(level).existingRainEntities){
-            e.discard();
+            e.remove();
         }
         get(level).existingRainEntities.clear();
         get(level).setDirty();
@@ -117,7 +128,7 @@ public class RainHandler extends SavedData {
 
     private boolean wasRaining = false;
     private boolean wasDay = false;
-    private static void tryStartRainEvents(Level world) {
+    private static void tryStartRainEvents(World world) {
         boolean alreadyChecked = false;
         RainHandler data = get(world);
         if (world.isRaining() && !data.wasRaining) {
@@ -142,7 +153,7 @@ public class RainHandler extends SavedData {
     }
 
 
-    private static void checkRainEvent(Level world) {
+    private static void checkRainEvent(World world) {
         for (ResourceLocation rainType : ModMain.ENTITY_RAIN_LOADER.events.keySet()){
             if (get(world).currentEvent != null) stopRain(world);
             EntityRainEvent rainData = ModMain.ENTITY_RAIN_LOADER.events.get(rainType);
@@ -182,17 +193,17 @@ public class RainHandler extends SavedData {
         }
     }
 
-    public static RainHandler get(Level level){
-        return ((ServerLevel) level).getDataStorage().computeIfAbsent(tag -> RainHandler.load(tag, level), RainHandler::new, ModMain.MOD_ID + ":rain_event_tracker");
+    public static RainHandler get(World level){
+        return ((ServerWorld) level).getDataStorage().computeIfAbsent(() -> new RainHandler(ModMain.MOD_ID + ":rain_event_tracker", level), ModMain.MOD_ID + ":rain_event_tracker");
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag) {
+    public CompoundNBT save(CompoundNBT tag) {
         tag.putBoolean("wasDay", wasDay);
         tag.putBoolean("wasRaining", wasRaining);
         if (currentEventKey != null) tag.putString("event", currentEventKey.toString());
 
-        CompoundTag entities = new CompoundTag();
+        CompoundNBT entities = new CompoundNBT();
         int i = 0;
         for (Entity e : existingRainEntities){
             if (!e.isAlive()) continue;
@@ -204,37 +215,35 @@ public class RainHandler extends SavedData {
         return tag;
     }
 
-    private static RainHandler load(CompoundTag tag, Level level) {
-        RainHandler self = new RainHandler();
-        self.wasDay = tag.getBoolean("wasDay");
-        self.wasRaining = tag.getBoolean("wasRaining");
-        self.currentEventKey = tag.contains("event") ? new ResourceLocation(tag.getString("event")) : null;
-        self.currentEvent = tag.contains("event") ? ModMain.ENTITY_RAIN_LOADER.events.getOrDefault(self.currentEventKey, null) : null;
+    @Override
+    public void load(CompoundNBT tag) {
+        this.wasDay = tag.getBoolean("wasDay");
+        this.wasRaining = tag.getBoolean("wasRaining");
+        this.currentEventKey = tag.contains("event") ? new ResourceLocation(tag.getString("event")) : null;
+        this.currentEvent = tag.contains("event") ? ModMain.ENTITY_RAIN_LOADER.events.getOrDefault(this.currentEventKey, null) : null;
 
         int i = 0;
-        CompoundTag entities = tag.getCompound("entities");
+        CompoundNBT entities = tag.getCompound("entities");
         while (entities.contains(String.valueOf(i))){
-            Entity e = ((ServerLevel)level).getEntity(entities.getUUID(String.valueOf(i)));
-            if (e != null) self.existingRainEntities.add(e);
+            Entity e = ((ServerWorld)this.levelForLoad).getEntity(entities.getUUID(String.valueOf(i)));
+            if (e != null) this.existingRainEntities.add(e);
             i++;
         }
-
-        return self;
     }
 
-    private static boolean filterBiome(IBiomeListHolder spawnData, Holder<Biome> currentBiome) {
+    private static boolean filterBiome(IBiomeListHolder spawnData, Biome currentBiome) {
         if (spawnData.getBiomes() == null) return true;
 
         boolean matches = false;
         for (String checkBiome : spawnData.getBiomes()){
             if (checkBiome.startsWith("#")){
-                TagKey<Biome> tag = TagKey.create(Registry.BIOME_REGISTRY, new ResourceLocation(checkBiome.substring(1)));
-                if (currentBiome.is(tag)){
+                Biome.Category category = Biome.Category.valueOf(checkBiome.substring(1));
+                if (currentBiome.getBiomeCategory().equals(category)){
                     matches = true;
                     break;
                 }
             } else {
-                if (currentBiome.is(new ResourceLocation(checkBiome))){
+                if (currentBiome.getRegistryName().equals(new ResourceLocation(checkBiome))){
                     matches = true;
                     break;
                 }

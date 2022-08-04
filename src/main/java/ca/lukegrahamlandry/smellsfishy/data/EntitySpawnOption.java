@@ -1,20 +1,12 @@
 package ca.lukegrahamlandry.smellsfishy.data;
 
-import net.minecraft.util.random.Weight;
-import net.minecraft.util.random.WeightedEntry;
-
 import java.util.List;
 
-public class EntitySpawnOption implements WeightedEntry, IBiomeListHolder {
+public class EntitySpawnOption implements IBiomeListHolder {
     public String entity;
     public int weight;
     public List<String> biomes;
     public boolean biomesIsBlacklist = false;
-
-    @Override
-    public Weight getWeight() {
-        return Weight.of(weight);
-    }
 
     @Override
     public List<String> getBiomes() {

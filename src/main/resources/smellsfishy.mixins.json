@@ -1,15 +1,15 @@
 {
   "required": true,
   "package": "ca.lukegrahamlandry.smellsfishy.mixin",
-  "compatibilityLevel": "JAVA_16",
+  "compatibilityLevel": "JAVA_8",
   "refmap": "smellsfishy.refmap.json",
   "mixins": [
-
   ],
   "client": [
+    "M1Fix"
   ],
   "injectors": {
     "defaultRequire": 1
   },
-  "minVersion": "0.8.4"
+  "minVersion": "0.8"
 }

@@ -2,21 +2,20 @@ package ca.lukegrahamlandry.smellsfishy.data;
 
 import ca.lukegrahamlandry.smellsfishy.ModMain;
 import com.google.gson.*;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
-import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.client.resources.JsonReloadListener;
+import net.minecraft.profiler.IProfiler;
+import net.minecraft.resources.IResourceManager;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class EntityRainLoader extends SimpleJsonResourceReloadListener {
+public class EntityRainLoader extends JsonReloadListener {
     public static final Gson GSON = (new GsonBuilder()).setPrettyPrinting().disableHtmlEscaping().create();
     public Map<ResourceLocation, EntityRainEvent> events = new HashMap<>();
 
@@ -25,7 +24,7 @@ public class EntityRainLoader extends SimpleJsonResourceReloadListener {
     }
 
     @Override
-    protected void apply(Map<ResourceLocation, JsonElement> files, ResourceManager p_10794_, ProfilerFiller p_10795_) {
+    protected void apply(Map<ResourceLocation, JsonElement> files, IResourceManager p_10794_, IProfiler p_10795_) {
         ModMain.LOGGER.debug("loading " + files.size() + " entity rain events");
         for (ResourceLocation name : files.keySet()){
             try {

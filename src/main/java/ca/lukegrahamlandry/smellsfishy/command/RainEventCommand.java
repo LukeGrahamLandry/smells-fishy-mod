@@ -6,18 +6,18 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import net.minecraft.ChatFormatting;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
-import net.minecraft.network.chat.TranslatableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.command.CommandSource;
+import net.minecraft.command.Commands;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.text.TextFormatting;
+import net.minecraft.util.text.TranslationTextComponent;
 
 public class RainEventCommand {
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+    public static void register(CommandDispatcher<CommandSource> dispatcher) {
         dispatcher.register(register());
     }
 
-    public static LiteralArgumentBuilder<CommandSourceStack> register() {
+    public static LiteralArgumentBuilder<CommandSource> register() {
         return Commands.literal("entityrain").requires((ctx) -> {
             return ctx.hasPermission(2);
         }).then(
@@ -29,16 +29,16 @@ public class RainEventCommand {
 
     }
 
-    public static int handleStart(CommandContext<CommandSourceStack> source) throws CommandSyntaxException {
+    public static int handleStart(CommandContext<CommandSource> source) throws CommandSyntaxException {
         ResourceLocation type = RainArgumentType.get(source, "event");
         boolean success = RainHandler.startRain(source.getSource().getLevel(), type);
-        source.getSource().sendSuccess(new TranslatableComponent("success.smellsfishy." + (success ? "start_rain" : "invlaid_rain")).withStyle(ChatFormatting.AQUA), true);
+        source.getSource().sendSuccess(new TranslationTextComponent("success.smellsfishy." + (success ? "start_rain" : "invlaid_rain")).withStyle(TextFormatting.AQUA), true);
         return Command.SINGLE_SUCCESS;
     }
 
-    public static int handleStop(CommandContext<CommandSourceStack> source) throws CommandSyntaxException {
+    public static int handleStop(CommandContext<CommandSource> source) throws CommandSyntaxException {
         RainHandler.stopRain(source.getSource().getLevel());
-        source.getSource().sendSuccess(new TranslatableComponent("success.smellsfishy.stop_rain").withStyle(ChatFormatting.AQUA), true);
+        source.getSource().sendSuccess(new TranslationTextComponent("success.smellsfishy.stop_rain").withStyle(TextFormatting.AQUA), true);
         return Command.SINGLE_SUCCESS;
     }
 }

@@ -1,9 +1,9 @@
 package ca.lukegrahamlandry.smellsfishy.init;
 
 import ca.lukegrahamlandry.smellsfishy.ModMain;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.simple.SimpleChannel;
+import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.fml.network.NetworkRegistry;
+import net.minecraftforge.fml.network.simple.SimpleChannel;
 
 public class NetworkInit {
     public static SimpleChannel INSTANCE;
