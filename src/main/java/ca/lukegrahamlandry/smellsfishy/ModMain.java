@@ -5,13 +5,13 @@ import ca.lukegrahamlandry.smellsfishy.data.EntityRainLoader;
 import net.minecraft.command.arguments.ArgumentSerializer;
 import net.minecraft.command.arguments.ArgumentTypes;
 import net.minecraftforge.fml.common.Mod;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @Mod(ModMain.MOD_ID)
 public class ModMain {
     public static final String MOD_ID = "smellsfishy";
-    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
     public static EntityRainLoader ENTITY_RAIN_LOADER = null;
 
     public ModMain() {

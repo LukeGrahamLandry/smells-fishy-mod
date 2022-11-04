@@ -5,12 +5,16 @@ import ca.lukegrahamlandry.smellsfishy.ModMain;
 import ca.lukegrahamlandry.smellsfishy.data.EntityRainEvent;
 import ca.lukegrahamlandry.smellsfishy.data.EntitySpawnOption;
 import ca.lukegrahamlandry.smellsfishy.data.IBiomeListHolder;
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.monster.SlimeEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.JsonToNBT;
 import net.minecraft.potion.EffectInstance;
 import net.minecraft.potion.Effects;
 import net.minecraft.util.ResourceLocation;
@@ -70,13 +74,9 @@ public class RainHandler extends WorldSavedData {
             List<EntitySpawnOption> possibleSpawns = new ArrayList<>(rainEvent.spawn);
             possibleSpawns.removeIf((spawnData) -> !filterBiome(spawnData, currentBiome));
             EntitySpawnOption toSpawn = pickRandom(possibleSpawns);
-            if (toSpawn == null) return;
+            Entity spawn = createEntity(toSpawn, player.level);
+            if (spawn == null) return;
 
-            ResourceLocation entityTypeKey = new ResourceLocation(toSpawn.entity);
-            EntityType<?> entityType = ForgeRegistries.ENTITIES.getValue(entityTypeKey);
-            if (entityType == null) return;
-
-            Entity spawn = entityType.create(player.level);
             if (spawn instanceof LivingEntity) ((LivingEntity) spawn).addEffect(new EffectInstance(Effects.SLOW_FALLING, 40, 0, false, false, false));
             spawn.setPos(x, y, z);
             spawn.getPersistentData().putBoolean("entityrain", true);
@@ -84,6 +84,30 @@ public class RainHandler extends WorldSavedData {
             get(player.level).existingRainEntities.add(spawn);
             get(player.level).setDirty();
         }
+    }
+
+    private static Entity createEntity(EntitySpawnOption toSpawn, World level) {
+        if (toSpawn == null) return null;
+
+        ResourceLocation entityTypeKey = new ResourceLocation(toSpawn.entity);
+        EntityType<?> entityType = ForgeRegistries.ENTITIES.getValue(entityTypeKey);
+        if (entityType == null) return null;
+
+        Entity spawn = entityType.create(level);
+        if (toSpawn.nbt != null)  {
+            try {
+                String data = toSpawn.nbt.toString();
+                CompoundNBT forcedNbt = (new JsonToNBT(new StringReader(data))).readStruct();
+                CompoundNBT defaultNbt = spawn.saveWithoutId(new CompoundNBT());
+                for (String key : forcedNbt.getAllKeys()){
+                    defaultNbt.put(key, forcedNbt.get(key));
+                }
+                spawn.load(defaultNbt);
+            } catch (CommandSyntaxException e) {
+                e.printStackTrace();
+            }
+        }
+        return spawn;
     }
 
     private static EntitySpawnOption pickRandom(List<EntitySpawnOption> spawn) {

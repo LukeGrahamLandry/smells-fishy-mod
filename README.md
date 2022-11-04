@@ -26,6 +26,7 @@ You can see the default fish rain json data [on github](https://github.com/LukeG
 - `weight` (int): how likely this entity is compared to the others. chance of each entry is (weight / totalWeight) 
 - `biomes` (list of string): resource locations of biomes to whitelist (allow this spawn in). **optional**, when not defined the spawn will occur in all biomes. Biome categories are supported, prefix with `#`
 - `biomesIsBlacklist` (boolean): when true, the `biomes` filter is inverted, the spawn will NOT occur in the listed biomes. **optional**, defaults to false
+- `nbt` (object): **optional**. nbt keys that should be set on the entity (for example for big slimes have `"nbt": {"Size": 4}`)
 
 > the data for currently active rain events does not change when the /reload command is used, you must wait for it to start again to see the effects
 

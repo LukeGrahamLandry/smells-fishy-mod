@@ -1,5 +1,7 @@
 package ca.lukegrahamlandry.smellsfishy.data;
 
+import com.google.gson.JsonElement;
+
 import java.util.List;
 
 public class EntitySpawnOption implements IBiomeListHolder {
@@ -7,6 +9,7 @@ public class EntitySpawnOption implements IBiomeListHolder {
     public int weight;
     public List<String> biomes;
     public boolean biomesIsBlacklist = false;
+    public JsonElement nbt = null;
 
     @Override
     public List<String> getBiomes() {
